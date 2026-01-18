@@ -20,13 +20,15 @@ The project focuses on combining Large Language Models (LLMs) with data visualiz
 - Cloud Platform for hosting and multi-user access
 - GitHub for version control and collaboration
 
-## Project Workflow (Planned)
+## Project Workflow 
 1. Requirement analysis and project planning
 2. Designing chatbot interaction flow
 3. Designing budget tracking and visualization module
 4. Integrating components into a single system
 5. Cloud deployment and testing
 
+## Team Member 1 Contribution – LLM Chatbot for Suggestions
+This member is responsible for designing the LLM-based chatbot that will assist users in planning events. The chatbot will be planned to provide intelligent suggestions related to event type, venue ideas, menu options, timelines, and overall event structure based on user inputs. The focus is on defining conversation flow, prompt design, and understanding how AI can support event planning tasks.
 
 
 
