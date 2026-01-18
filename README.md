@@ -33,8 +33,8 @@ This member is responsible for designing the LLM-based chatbot that will assist 
 ## Team Member 2 Contribution – Budget Tracker and Visualization
 This member is responsible for planning the budget tracking component of the project. The role includes defining how event expenses will be recorded, categorized, and monitored. The member will also plan the use of data visualization techniques such as charts and graphs to help users clearly understand budget distribution and spending patterns.
 
-
-
+## Team Member 3 Contribution – Cloud Deployment and User Interface
+This member is responsible for planning the cloud deployment and user interface of the application. The role involves designing a simple and user-friendly interface and planning how the application will be hosted on the cloud to support multiple users. The focus is on accessibility, basic UI flow, and deployment strategy.
 
 
 
