@@ -30,6 +30,10 @@ The project focuses on combining Large Language Models (LLMs) with data visualiz
 ## Team Member 1 Contribution – LLM Chatbot for Suggestions
 This member is responsible for designing the LLM-based chatbot that will assist users in planning events. The chatbot will be planned to provide intelligent suggestions related to event type, venue ideas, menu options, timelines, and overall event structure based on user inputs. The focus is on defining conversation flow, prompt design, and understanding how AI can support event planning tasks.
 
+## Team Member 2 Contribution – Budget Tracker and Visualization
+This member is responsible for planning the budget tracking component of the project. The role includes defining how event expenses will be recorded, categorized, and monitored. The member will also plan the use of data visualization techniques such as charts and graphs to help users clearly understand budget distribution and spending patterns.
+
+
 
 
 
