@@ -1,9 +1,7 @@
-# budget/budget_model.py
-
 class Budget:
     def __init__(self, total_budget):
         self.total_budget = total_budget
-        
+
         # Expense categories
         self.expenses = {
             "venue": 0,
@@ -17,4 +15,3 @@ class Budget:
             self.expenses[category] += amount
         else:
             print("Invalid category")
-
