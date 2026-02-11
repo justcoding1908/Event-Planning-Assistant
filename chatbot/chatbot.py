@@ -29,15 +29,18 @@ def select_prompt(event_type: str) -> str:
 def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     """
     Generates an event plan using the selected prompt and LLM service.
-
-    Parameters:
-    - event_type (str): Type of event
-    - guests (int): Number of guests
-    - budget (int): Total budget in INR
-
-    Returns:
-    - str: AI-generated event plan
+    Includes basic input validation.
     """
+
+    # Basic validation checks
+    if not event_type:
+        return "Error: Event type is required."
+
+    if guests <= 0:
+        return "Error: Number of guests must be greater than zero."
+
+    if budget <= 0:
+        return "Error: Budget must be greater than zero."
 
     prompt_template = select_prompt(event_type)
 
