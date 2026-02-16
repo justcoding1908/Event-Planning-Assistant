@@ -29,10 +29,10 @@ def select_prompt(event_type: str) -> str:
 def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     """
     Generates an event plan using the selected prompt and LLM service.
-    Includes basic input validation.
+    Includes basic input validation and budget intelligence.
     """
 
-    # Basic validation checks
+    # Validation
     if not event_type:
         return "Error: Event type is required."
 
@@ -42,6 +42,7 @@ def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     if budget <= 0:
         return "Error: Budget must be greater than zero."
 
+    # Select prompt
     prompt_template = select_prompt(event_type)
 
     formatted_prompt = prompt_template.format(
@@ -50,4 +51,13 @@ def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     )
 
     response = get_llm_response(formatted_prompt)
+
+    # NEW: Budget intelligence logic
+    if budget < 20000:
+        response += "\n\n⚠ Warning: Your budget is quite low. Consider reducing guest count or simplifying arrangements."
+    elif budget > 200000:
+        response += "\n\n✨ You have a comfortable budget. You can consider premium venue and catering options."
+
     return response
+
+

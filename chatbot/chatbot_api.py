@@ -1,8 +1,7 @@
 """
 Chatbot API Interface
 ---------------------
-This file exposes chatbot functionality in a structured format
-that can be easily integrated with frontend or backend APIs.
+This file exposes chatbot functionality in a structured format.
 """
 
 from chatbot import generate_event_plan

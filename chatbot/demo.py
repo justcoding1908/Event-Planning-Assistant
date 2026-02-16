@@ -2,7 +2,7 @@
 Local Demo Script for Event Planning Chatbot
 This file is used to test the chatbot module locally.
 """
-
+"""
 from chatbot import generate_event_plan
 
 if __name__ == "__main__":
@@ -14,3 +14,14 @@ if __name__ == "__main__":
 
     print("AI Event Plan Output:\n")
     print(result)
+"""
+
+
+
+
+from chatbot_api import get_chatbot_response
+
+if __name__ == "__main__":
+    result = get_chatbot_response("Birthday", 50, 50000)
+    print(result)
+
