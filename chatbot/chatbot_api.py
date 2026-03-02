@@ -4,7 +4,7 @@ Chatbot API Interface
 This file exposes chatbot functionality in a structured format.
 """
 
-from chatbot import generate_event_plan
+from chatbot.chatbot import generate_event_plan
 
 
 def get_chatbot_response(event_type: str, guests: int, budget: int) -> dict:

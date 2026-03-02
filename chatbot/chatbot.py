@@ -7,8 +7,8 @@ This file controls the chatbot flow by:
 - Calling the LLM service
 """
 
-from prompts import BIRTHDAY_PROMPT, WEDDING_PROMPT, CORPORATE_PROMPT
-from llm_service import get_llm_response
+from chatbot.prompts import BIRTHDAY_PROMPT, WEDDING_PROMPT, CORPORATE_PROMPT
+from chatbot.llm_service import get_llm_response
 
 
 def select_prompt(event_type: str) -> str:
