@@ -1,34 +1,27 @@
-"""
-Budget Visualization Module
-----------------------------
-This file handles visual representation of budget data.
-Charts are generated using matplotlib.
-"""
 import matplotlib.pyplot as plt
-from expenses import calculate_total_spent, calculate_remaining_budget
+from expenses import calculate_total_spent
+
 
 def show_category_wise_chart(budget):
     categories = list(budget.expenses.keys())
     values = list(budget.expenses.values())
 
     plt.figure()
-    plt.pie(values, labels=categories, autopct="%1.1f%%")
-    plt.title("Category-wise Expense Distribution")
+    plt.pie(values, labels=categories, autopct="%1.1f%%", startangle=90)
+    plt.title("Expense Distribution")
+    plt.axis('equal')
+    plt.savefig("budget_pie_chart.png")
+    print("Pie chart saved as budget_pie_chart.png")
 
-    plt.savefig("budget_chart.png")
-    print("Chart saved as budget_chart.png")
 
-def show_budget_summary_chart(budget):
-    """
-    Displays planned vs actual budget.
-    """
-
-    planned = budget.total_budget
-    actual = calculate_total_spent(budget)
+def show_bar_chart(budget):
+    categories = list(budget.expenses.keys())
+    values = list(budget.expenses.values())
 
     plt.figure()
-    plt.bar(["Planned Budget", "Spent Amount"], [planned, actual])
-    plt.title("Planned vs Actual Budget")
+    plt.bar(categories, values)
+    plt.title("Expense Distribution (Bar Chart)")
+    plt.xlabel("Categories")
     plt.ylabel("Amount (INR)")
-    plt.show()
-
+    plt.savefig("budget_bar_chart.png")
+    print("Bar chart saved as budget_bar_chart.png")

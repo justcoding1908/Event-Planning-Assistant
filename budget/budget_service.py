@@ -3,7 +3,7 @@ Budget Service Layer
 Handles structured output for backend
 """
 
-from budget.expenses import (
+from expenses import (
     calculate_total_spent,
     calculate_remaining_budget,
     get_budget_status
