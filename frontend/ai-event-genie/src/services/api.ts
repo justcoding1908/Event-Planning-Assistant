@@ -12,12 +12,15 @@ export async function generateEventPlan(data: {
       body: JSON.stringify(data),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP Error: ${response.status}`);
-    }
+    const result = await response.json();
 
-    return await response.json();
+console.log("API RESPONSE:", result); // 🔥 VERY IMPORTANT
+
+if (result.status !== "success") {
+  throw new Error(result.message || "Backend error");
+}
+
+return result;
   } catch (error) {
     console.error("API Error:", error);
     throw error;

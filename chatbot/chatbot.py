@@ -46,6 +46,7 @@ def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     prompt_template = select_prompt(event_type)
 
     formatted_prompt = prompt_template.format(
+        event_type=event_type,
         guests=guests,
         budget=budget
     )

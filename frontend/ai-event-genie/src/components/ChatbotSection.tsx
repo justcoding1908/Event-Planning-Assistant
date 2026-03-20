@@ -126,7 +126,28 @@ Would you like me to adjust anything about this plan?
                       message.type === "ai" ? "chat-bubble-ai" : "chat-bubble-user"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-line">{message.text}</p>
+                    <p className="text-sm whitespace-pre-line">
+  {message.text.split("\n").map((line, index) => {
+    const match = line.match(/^([0-9]+\.\s[^:]+:)(.*)$/);
+
+    if (match) {
+      return (
+        <span key={index}>
+          <strong>{match[1]}</strong>
+          {match[2]}
+          <br />
+        </span>
+      );
+    }
+
+    return (
+      <span key={index}>
+        {line}
+        <br />
+      </span>
+    );
+  })}
+</p>
                   </div>
                 </div>
               ))}
