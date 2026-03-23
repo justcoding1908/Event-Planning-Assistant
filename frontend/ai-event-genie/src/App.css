@@ -40,3 +40,37 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Print styles for PDF export */
+@media print {
+  /* Hide elements not needed in print */
+  nav,
+  #chatbot > .container > .grid > div:nth-child(1),
+  #chatbot > .container > .grid > div:nth-child(3),
+  #chatbot > .container > .text-center,
+  .btn-gradient,
+  button,
+  input[type="text"],
+  input[type="number"],
+  .flex.gap-2 {
+    display: none !important;
+  }
+
+  /* Optimize plan card for printing */
+  #plan-card {
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: avoid;
+  }
+
+  body {
+    background: white;
+    color: #000;
+  }
+
+  /* Ensure proper spacing */
+  section {
+    margin: 0;
+    padding: 0;
+  }
+}
