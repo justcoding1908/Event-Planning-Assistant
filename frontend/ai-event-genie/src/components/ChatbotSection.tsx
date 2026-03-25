@@ -3,105 +3,72 @@ import { Bot, Send, Sparkles, Download, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// Use environment variable for Grok API key (stored in .env.local as VITE_GROK_API_KEY)
-const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY || "";
-
-interface Message {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
+import { generateEventPlan } from "@/services/api";
 
 interface ParsedSection {
   title: string;
   content: string;
 }
 
-// Call Grok API directly
-const callGrokAPI = async (
-  messages: Message[],
-  systemPrompt: string
-): Promise<string> => {
-  if (!GROK_API_KEY) {
-    throw new Error("GROK_API_KEY not configured. Set VITE_GROK_API_KEY in .env.local");
-  }
+interface Message {
+  role: "user" | "assistant" | "system";
+  content: string;
+  isPlan?: boolean;
+}
 
-  const response = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${GROK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "grok-3-latest",
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-      max_tokens: 2000,
-      temperature: 0.7,
-    }),
-  });
+// ─── Currency helper ──────────────────────────────────────────────────────────
+// Normalises any "$" or "USD" in backend-generated text to "₹" / "INR"
+const toRupees = (text: string): string =>
+  text.replace(/\$\s*/g, "₹").replace(/\bUSD\b/g, "INR");
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Grok API error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-};
-
-// Parse plan text into structured sections
-const parsePlan = (text: string): ParsedSection[] => {
+// ─── parsePlan ────────────────────────────────────────────────────────────────
+const parsePlan = (text: string | undefined): ParsedSection[] => {
+  if (!text) return [];
   const sections: ParsedSection[] = [];
 
-  // Match patterns like "1. Title:" or "**1. Title**"
   const sectionRegex =
     /(?:^|\n)\s*(?:\*{0,2})(\d+)\.\s*([^:\n*]+)(?:\*{0,2})?:?\s*/gm;
-  const matches: Array<{ index: number; number: string; title: string }> = [];
+  const matches: Array<{
+    index: number;
+    matchLength: number;
+    number: string;
+    title: string;
+  }> = [];
   let match;
 
   while ((match = sectionRegex.exec(text)) !== null) {
     matches.push({
       index: match.index,
+      matchLength: match[0].length,
       number: match[1],
       title: match[2].trim(),
     });
   }
 
-  // Build sections
   for (let i = 0; i < matches.length; i++) {
-    const currentMatch = matches[i];
-    const nextMatch = matches[i + 1];
-    const endIndex = nextMatch ? nextMatch.index : text.length;
-
-    const content = text
-      .substring(currentMatch.index + currentMatch[0].length, endIndex)
-      .trim();
-
-    sections.push({
-      title: `${currentMatch.number}. ${currentMatch.title}`,
-      content,
-    });
+    const cur = matches[i];
+    const next = matches[i + 1];
+    const endIndex = next ? next.index : text.length;
+    const content = text.substring(cur.index + cur.matchLength, endIndex).trim();
+    sections.push({ title: `${cur.number}. ${cur.title}`, content });
   }
 
-  return sections.length > 0
-    ? sections
-    : [{ title: "Plan", content: text }];
+  return sections.length > 0 ? sections : [{ title: "Plan", content: text }];
 };
 
-// Render markdown text (bold, italics)
+// ─── renderMarkdown ───────────────────────────────────────────────────────────
 const renderMarkdown = (text: string) => {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
+    if (part.startsWith("**") && part.endsWith("**"))
       return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
+    if (part.startsWith("*") && part.endsWith("*"))
       return <em key={i}>{part.slice(1, -1)}</em>;
-    }
     return part;
   });
 };
 
-// Budget breakdown visualization
+// ─── BudgetBreakdown ──────────────────────────────────────────────────────────
 const BudgetBreakdown = ({ budget }: { budget: number }) => {
   const allocations = [
     { label: "Venue", percent: 40, color: "bg-blue-500" },
@@ -118,7 +85,7 @@ const BudgetBreakdown = ({ budget }: { budget: number }) => {
           <div
             key={item.label}
             className={`${item.color} flex-1`}
-            title={`${item.label}: $${(budget * item.percent) / 100}`}
+            title={`${item.label}: ₹${(budget * item.percent) / 100}`}
           />
         ))}
       </div>
@@ -127,7 +94,7 @@ const BudgetBreakdown = ({ budget }: { budget: number }) => {
           <div key={item.label} className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${item.color}`} />
             <span className="text-gray-600">
-              {item.label}: ${(budget * item.percent) / 100}
+              {item.label}: ₹{(budget * item.percent) / 100}
             </span>
           </div>
         ))}
@@ -136,7 +103,7 @@ const BudgetBreakdown = ({ budget }: { budget: number }) => {
   );
 };
 
-// Plan section card
+// ─── PlanSection card ─────────────────────────────────────────────────────────
 const PlanSection = ({
   section,
   index,
@@ -144,7 +111,6 @@ const PlanSection = ({
   section: ParsedSection;
   index: number;
 }) => {
-  // Parse bullet points and structured text
   const lines = section.content.split("\n").filter((l) => l.trim());
   const bulletPoints = lines.filter(
     (l) => l.trim().startsWith("-") || l.trim().startsWith("•")
@@ -156,20 +122,20 @@ const PlanSection = ({
   return (
     <div className="bg-white border-l-4 border-indigo-500 p-4 rounded-lg mb-4">
       <div className="flex items-center gap-3 mb-2">
-        <span className="flex items-center justify-center w-8 h-8 bg-indigo-500 text-white rounded-full text-sm font-bold">
+        <span className="flex items-center justify-center w-8 h-8 bg-indigo-500 text-white rounded-full text-sm font-bold flex-shrink-0">
           {index + 1}
         </span>
         <h3 className="font-bold text-gray-900">{section.title}</h3>
       </div>
       {paragraphs.map((p, i) => (
         <p key={i} className="text-gray-700 text-sm mb-3">
-          {renderMarkdown(p)}
+          {renderMarkdown(toRupees(p))}
         </p>
       ))}
       {bulletPoints.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-3">
           {bulletPoints.map((point, i) => {
-            const text = point.replace(/^[•\-]\s*/, "").trim();
+            const text = toRupees(point.replace(/^[•\-]\s*/, "").trim());
             return (
               <span
                 key={i}
@@ -185,21 +151,28 @@ const PlanSection = ({
   );
 };
 
-// Plan display component
-const PlanDisplay = ({
-  plan,
-  budget,
-}: {
-  plan: string;
-  budget: number;
-}) => {
-  const sections = parsePlan(plan);
-  const summary = plan.split("\n")[0];
+// ─── PlanDisplay (full structured view below chat) ────────────────────────────
+const PlanDisplay = ({ plan, budget }: { plan: string; budget: number }) => {
+  const safePlan = toRupees(plan || "");
+
+  if (!safePlan.trim()) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500 text-sm">
+        No plan content to display yet.
+      </div>
+    );
+  }
+
+  const sections = parsePlan(safePlan);
+  const summary = safePlan.split("\n")[0];
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg">
+    <div
+      className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 sm:p-6 rounded-lg"
+      id="plan-card"
+    >
       <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <p className="text-gray-600 text-sm mb-4">{summary}</p>
           <div className="flex flex-wrap gap-2 mb-4">
             <span className="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">
@@ -214,7 +187,7 @@ const PlanDisplay = ({
           onClick={() => window.print()}
           size="sm"
           variant="outline"
-          className="gap-2"
+          className="gap-2 ml-2 flex-shrink-0"
         >
           <Download className="w-4 h-4" />
           PDF
@@ -232,40 +205,101 @@ const PlanDisplay = ({
   );
 };
 
-// Typing indicator animation
-const TypingIndicator = () => (
-  <div className="flex items-center gap-1 p-3">
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-    <div
-      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-      style={{ animationDelay: "0.1s" }}
-    ></div>
-    <div
-      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-      style={{ animationDelay: "0.2s" }}
-    ></div>
-  </div>
-);
+// ─── ChatPlanBubble — plan as formatted cards inside the chat window ──────────
+const ChatPlanBubble = ({ content }: { content: string }) => {
+  const safePlan = toRupees(content || "");
+  const sections = parsePlan(safePlan);
 
-// Message bubble component
-const MessageBubble = ({ message }: { message: Message }) => {
-  const isUser = message.role === "user";
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
-      <div
-        className={`max-w-xs px-4 py-2.5 rounded-lg text-sm break-words ${
-          isUser
-            ? "bg-indigo-500 text-white rounded-br-none"
-            : "bg-gray-200 text-gray-900 rounded-bl-none"
-        }`}
-      >
-        {renderMarkdown(message.content)}
+    <div className="w-full mb-3">
+      <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+        {/* Header row */}
+        <div className="flex items-center gap-2 mb-3">
+          <Bot className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+          <span className="text-xs font-semibold text-indigo-600">
+            Event Plan Generated
+          </span>
+          <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full ml-auto">
+            ✓ Ready
+          </span>
+        </div>
+
+        {/* Section cards */}
+        <div className="space-y-2">
+          {sections.map((section, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-md border border-indigo-100 p-3"
+            >
+              <div className="flex items-start gap-2">
+                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-indigo-500 text-white rounded-full text-xs font-bold">
+                  {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-800 mb-1">
+                    {section.title}
+                  </p>
+                  {/* Show first non-empty line of content */}
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {toRupees(
+                      section.content
+                        .split("\n")
+                        .find((l) => l.trim()) || ""
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-indigo-400 mt-3 text-center">
+          Full plan with details shown below ↓
+        </p>
       </div>
     </div>
   );
 };
 
-// Quick reply suggestions
+// ─── TypingIndicator ──────────────────────────────────────────────────────────
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1 p-3">
+    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+    <div
+      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+      style={{ animationDelay: "0.1s" }}
+    />
+    <div
+      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+      style={{ animationDelay: "0.2s" }}
+    />
+  </div>
+);
+
+// ─── MessageBubble ────────────────────────────────────────────────────────────
+const MessageBubble = ({ message }: { message: Message }) => {
+  const isUser = message.role === "user";
+
+  if (message.isPlan) {
+    return <ChatPlanBubble content={message.content} />;
+  }
+
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
+      <div
+        className={`max-w-[80%] px-4 py-2.5 rounded-lg text-sm break-words ${
+          isUser
+            ? "bg-indigo-500 text-white rounded-br-none"
+            : "bg-gray-200 text-gray-900 rounded-bl-none"
+        }`}
+      >
+        {renderMarkdown(toRupees(message.content))}
+      </div>
+    </div>
+  );
+};
+
+// ─── QuickReplies ─────────────────────────────────────────────────────────────
 const QuickReplies = ({ onSelect }: { onSelect: (text: string) => void }) => {
   const suggestions = [
     "Plan a birthday 🎂",
@@ -273,7 +307,6 @@ const QuickReplies = ({ onSelect }: { onSelect: (text: string) => void }) => {
     "Wedding planning 💍",
     "More budget info 💰",
   ];
-
   return (
     <div className="flex flex-wrap gap-2 mt-4">
       {suggestions.map((text) => (
@@ -289,6 +322,7 @@ const QuickReplies = ({ onSelect }: { onSelect: (text: string) => void }) => {
   );
 };
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 const ChatbotSection = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [eventType, setEventType] = useState("");
@@ -302,16 +336,13 @@ const ChatbotSection = () => {
   const [showChat, setShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
-  const scrollToBottom = () => {
+  const scrollToBottom = () =>
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize with welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
@@ -324,6 +355,7 @@ const ChatbotSection = () => {
     }
   }, []);
 
+  // ── handleGeneratePlan ──────────────────────────────────────────────────────
   const handleGeneratePlan = async () => {
     if (!eventType.trim() || guests <= 0 || budget <= 0) {
       setMessages((prev) => [
@@ -337,31 +369,31 @@ const ChatbotSection = () => {
       return;
     }
 
-    const userMessage = `I need to plan a ${eventType} event for ${guests} guests with a budget of $${budget}`;
+    const userMessage = `I need to plan a ${eventType} event for ${guests} guests with a budget of ₹${budget}`;
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setLoading(true);
 
     try {
-      const systemPrompt = `You are EventAI, an expert event planning assistant. Help users create detailed, structured event plans with section numbers and actionable items. Respond in this exact format:
+      const result = await generateEventPlan({
+        event_type: eventType,
+        guests: Number(guests),
+        budget: Number(budget),
+      });
 
-1. Event Overview: Brief description of the event
-2. Venue Recommendations: Specific venue suggestions
-3. Catering Plan: Food and beverage options
-4. Decorations & Theme: Design suggestions
-5. Entertainment: Activities and entertainment options
-6. Timeline & Schedule: Detailed day-of schedule
-7. Budget Allocation: How to allocate the budget
-8. Additional Notes: Final tips and reminders
+      const plan: string =
+        result?.generated_plan || result?.data?.generated_plan || "";
 
-Be specific and practical in your recommendations.`;
-
-      const response = await callGrokAPI([{ role: "user", content: userMessage }], systemPrompt);
+      if (!plan) {
+        throw new Error(
+          "Backend returned an empty plan. Check that the Flask server is running."
+        );
+      }
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response },
+        { role: "assistant", content: plan, isPlan: true },
       ]);
-      setCurrentPlan(response);
+      setCurrentPlan(plan);
       setShowPlanInput(true);
     } catch (error) {
       console.error("Error generating plan:", error);
@@ -369,7 +401,9 @@ Be specific and practical in your recommendations.`;
         ...prev,
         {
           role: "assistant",
-          content: `❌ Error: ${error instanceof Error ? error.message : "Failed to generate plan"}`,
+          content: `❌ Error: ${
+            error instanceof Error ? error.message : "Failed to generate plan"
+          }`,
         },
       ]);
     } finally {
@@ -377,28 +411,36 @@ Be specific and practical in your recommendations.`;
     }
   };
 
+  // ── handleUpdatePlan ────────────────────────────────────────────────────────
   const handleUpdatePlan = async () => {
     if (!userQuery.trim() || !currentPlan) return;
 
-    const userMessage = `Please update the event plan: ${userQuery}`;
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: `Please update the event plan: ${userQuery}` },
+    ]);
     setLoading(true);
 
     try {
-      const systemPrompt = `You are EventAI, an expert event planning assistant. The user has an existing event plan and wants to modify it. Apply the requested changes and return the complete updated plan in the EXACT same structured format with sections numbered 1-8.
+      const result = await generateEventPlan({
+        event_type: eventType,
+        guests: Number(guests),
+        budget: Number(budget),
+        user_query: userQuery,
+      });
 
-Current plan:
-${currentPlan}
-
-Apply the requested changes and return the updated plan.`;
-
-      const response = await callGrokAPI([{ role: "user", content: userMessage }], systemPrompt);
+      const plan: string =
+        result?.generated_plan || result?.data?.generated_plan || "";
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response },
+        {
+          role: "assistant",
+          content: plan || "Plan updated.",
+          isPlan: !!plan,
+        },
       ]);
-      setCurrentPlan(response);
+      if (plan) setCurrentPlan(plan);
       setUserQuery("");
     } catch (error) {
       console.error("Error updating plan:", error);
@@ -406,7 +448,9 @@ Apply the requested changes and return the updated plan.`;
         ...prev,
         {
           role: "assistant",
-          content: `❌ Error: ${error instanceof Error ? error.message : "Failed to update plan"}`,
+          content: `❌ Error: ${
+            error instanceof Error ? error.message : "Failed to update plan"
+          }`,
         },
       ]);
     } finally {
@@ -414,21 +458,33 @@ Apply the requested changes and return the updated plan.`;
     }
   };
 
+  // ── handleChatMessage ───────────────────────────────────────────────────────
   const handleChatMessage = async () => {
     if (!chatInput.trim()) return;
-
-    setMessages((prev) => [...prev, { role: "user", content: chatInput }]);
+    const message = chatInput;
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
     setChatInput("");
     setLoading(true);
 
     try {
-      const systemPrompt = `You are EventAI, a friendly event planning assistant. Answer questions about event planning, budgeting, themes, venues, catering, decorations, entertainment, and logistics. Be helpful, specific, and encouraging.`;
+      const result = await generateEventPlan({
+        event_type: eventType || "general",
+        guests: Number(guests) || 50,
+        budget: Number(budget) || 10000,
+        user_query: message,
+      });
 
-      const response = await callGrokAPI([{ role: "user", content: chatInput }], systemPrompt);
+      const plan: string =
+        result?.generated_plan || result?.data?.generated_plan || "";
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response },
+        {
+          role: "assistant",
+          content:
+            plan || "Sorry, I couldn't get a response. Is the backend running?",
+          isPlan: !!plan,
+        },
       ]);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -436,7 +492,9 @@ Apply the requested changes and return the updated plan.`;
         ...prev,
         {
           role: "assistant",
-          content: `❌ Error: ${error instanceof Error ? error.message : "Failed to send message"}`,
+          content: `❌ Error: ${
+            error instanceof Error ? error.message : "Failed to send message"
+          }`,
         },
       ]);
     } finally {
@@ -444,6 +502,7 @@ Apply the requested changes and return the updated plan.`;
     }
   };
 
+  // ── handleQuickReply ────────────────────────────────────────────────────────
   const handleQuickReply = async (text: string) => {
     if (text.includes("birthday")) {
       setEventType("Birthday party");
@@ -459,45 +518,70 @@ Apply the requested changes and return the updated plan.`;
       setBudget(500000);
     } else {
       setMessages((prev) => [...prev, { role: "user", content: text }]);
-      setChatInput("");
       setLoading(true);
-
       try {
-        const systemPrompt = `You are EventAI, a friendly event planning assistant. Answer questions about event planning in a helpful and specific manner.`;
-        const response = await callGrokAPI([{ role: "user", content: text }], systemPrompt);
+        const result = await generateEventPlan({
+          event_type: eventType || "general",
+          guests: Number(guests) || 50,
+          budget: Number(budget) || 10000,
+          user_query: text,
+        });
+        const plan: string =
+          result?.generated_plan || result?.data?.generated_plan || "";
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: response },
+          {
+            role: "assistant",
+            content: plan || "Sorry, no response from backend.",
+            isPlan: !!plan,
+          },
         ]);
       } catch (error) {
-        console.error("Error:", error);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `❌ Error: ${
+              error instanceof Error ? error.message : "Failed"
+            }`,
+          },
+        ]);
       } finally {
         setLoading(false);
       }
     }
   };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <section className="py-16 px-4 bg-gradient-to-b from-white to-gray-50" id="chatbot">
-      <div className="container max-w-4xl">
-        {/* Section header */}
-        <div className="text-center mb-12">
+    <section
+      className="py-8 sm:py-16 px-3 sm:px-6 bg-gradient-to-b from-white to-gray-50"
+      id="chatbot"
+    >
+      <div className="w-full max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8 sm:mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-indigo-100 border border-indigo-300">
             <Bot className="w-4 h-4 text-indigo-600" />
             <span className="text-sm font-medium text-indigo-600">
               AI-Powered Planning
             </span>
           </div>
-          <h2 className="text-4xl font-bold mb-3">EventAI Assistant</h2>
-          <p className="max-w-2xl mx-auto text-gray-600">
-            Chat with your personal AI event planner or generate a complete event
-            plan. Refine it with specific requests.
+          <h2 className="text-2xl sm:text-4xl font-bold mb-3">
+            EventAI Assistant
+          </h2>
+          <p className="max-w-2xl mx-auto text-gray-600 text-sm sm:text-base">
+            Chat with your personal AI event planner or generate a complete
+            event plan. Refine it with specific requests.
           </p>
         </div>
 
-        <div className="grid gap-8">
-          {/* Chat Window */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-96">
+        <div className="flex flex-col gap-6">
+          {/* ── Chat Window ── */}
+          <div
+            className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col"
+            style={{ minHeight: "380px", maxHeight: "60vh" }}
+          >
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
               {messages.map((msg, i) => (
@@ -507,7 +591,7 @@ Apply the requested changes and return the updated plan.`;
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick replies on first message */}
+            {/* Quick replies */}
             {messages.length <= 1 && !showChat && (
               <div className="px-4 pb-2 bg-white">
                 <QuickReplies onSelect={handleQuickReply} />
@@ -515,7 +599,7 @@ Apply the requested changes and return the updated plan.`;
             )}
 
             {/* Chat Input */}
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-3 sm:p-4 border-t border-gray-200 bg-white">
               <div className="flex gap-2">
                 <Input
                   placeholder="Ask about event planning..."
@@ -525,9 +609,7 @@ Apply the requested changes and return the updated plan.`;
                     setShowChat(true);
                   }}
                   onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleChatMessage();
-                    }
+                    if (e.key === "Enter") handleChatMessage();
                   }}
                   disabled={loading}
                   className="flex-1 rounded-lg"
@@ -535,7 +617,7 @@ Apply the requested changes and return the updated plan.`;
                 <Button
                   onClick={handleChatMessage}
                   disabled={loading || !chatInput.trim()}
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg"
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg flex-shrink-0"
                 >
                   {loading ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -547,11 +629,11 @@ Apply the requested changes and return the updated plan.`;
             </div>
           </div>
 
-          {/* Plan Generator */}
+          {/* ── Plan Generator form ── */}
           {!currentPlan && (
-            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
                   <Sparkles className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
@@ -577,7 +659,7 @@ Apply the requested changes and return the updated plan.`;
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Number of Guests
@@ -586,19 +668,23 @@ Apply the requested changes and return the updated plan.`;
                       type="number"
                       placeholder="50"
                       value={guests || ""}
-                      onChange={(e) => setGuests(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setGuests(Number(e.target.value) || 0)
+                      }
                       className="rounded-lg"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Budget ($)
+                      Budget (₹)
                     </label>
                     <Input
                       type="number"
                       placeholder="100000"
                       value={budget || ""}
-                      onChange={(e) => setBudget(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        setBudget(Number(e.target.value) || 0)
+                      }
                       className="rounded-lg"
                     />
                   </div>
@@ -625,15 +711,15 @@ Apply the requested changes and return the updated plan.`;
             </div>
           )}
 
-          {/* Generated Plan */}
+          {/* ── Generated Plan ── */}
           {currentPlan && (
             <>
               <PlanDisplay plan={currentPlan} budget={budget} />
 
-              {/* Refine Plan */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              {/* Refine */}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                     <Send className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
@@ -648,18 +734,15 @@ Apply the requested changes and return the updated plan.`;
 
                 <div className="space-y-3">
                   <Input
-                    placeholder="e.g., Add more vegetarian options, reduce budget by 20%, change theme to tropical..."
+                    placeholder="e.g., Add more vegetarian options, reduce budget by 20%..."
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
                     onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        handleUpdatePlan();
-                      }
+                      if (e.key === "Enter") handleUpdatePlan();
                     }}
                     disabled={loading}
                     className="rounded-lg"
                   />
-
                   <Button
                     onClick={handleUpdatePlan}
                     disabled={loading || !userQuery.trim()}

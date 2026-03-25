@@ -2,6 +2,7 @@ export async function generateEventPlan(data: {
   event_type: string;
   guests: number;
   budget: number;
+  user_query?: string;
 }) {
   try {
     const response = await fetch("http://127.0.0.1:5000/generate-plan", {
