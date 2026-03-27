@@ -40,3 +40,9 @@ def get_budget_summary(budget):
         summary["message"] = "You have exceeded your budget!"
 
     return summary
+
+def auto_allocate_budget(budget):
+    budget.add_expense("venue", int(budget.total_budget * 0.3))
+    budget.add_expense("food", int(budget.total_budget * 0.4))
+    budget.add_expense("decoration", int(budget.total_budget * 0.2))
+    return budget
