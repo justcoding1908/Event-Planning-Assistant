@@ -152,7 +152,15 @@ const PlanSection = ({
 };
 
 // ─── PlanDisplay (full structured view below chat) ────────────────────────────
-const PlanDisplay = ({ plan, budget }: { plan: string; budget: number }) => {
+const PlanDisplay = ({
+  plan,
+  budget,
+  downloadPDF,
+}: {
+  plan: string;
+  budget: number;
+  downloadPDF: () => void;
+}) => {
   const safePlan = toRupees(plan || "");
 
   if (!safePlan.trim()) {
@@ -184,10 +192,10 @@ const PlanDisplay = ({ plan, budget }: { plan: string; budget: number }) => {
           </div>
         </div>
         <Button
-          onClick={() => window.print()}
+          onClick={downloadPDF}
           size="sm"
           variant="outline"
-          className="gap-2 ml-2 flex-shrink-0"
+          className="gap-2 ml-2 flex-shrink-0 print:hidden"
         >
           <Download className="w-4 h-4" />
           PDF
@@ -552,6 +560,27 @@ const ChatbotSection = () => {
     }
   };
 
+  /* 🔥 ADD YOUR FUNCTION HERE */
+const downloadPDF = () => {
+  const element = document.getElementById("plan-card");
+
+  if (!element) {
+    console.error("Plan card not found");
+    return;
+  }
+
+  const opt = {
+    margin: 0.5,
+    filename: "event-plan.pdf",
+    image: { type: "jpeg", quality: 1 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+  };
+
+  import("html2pdf.js").then((html2pdf: any) => {
+    html2pdf.default().set(opt).from(element).save();
+  });
+};
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <section
@@ -714,7 +743,11 @@ const ChatbotSection = () => {
           {/* ── Generated Plan ── */}
           {currentPlan && (
             <>
-              <PlanDisplay plan={currentPlan} budget={budget} />
+              <PlanDisplay
+                plan={currentPlan}
+                budget={budget}
+                downloadPDF={downloadPDF}
+              />
 
               {/* Refine */}
               <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 shadow-sm">
