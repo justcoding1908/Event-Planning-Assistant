@@ -50,7 +50,13 @@ def generate_plan():
         """
                 plan = get_llm_response(modified_prompt)
             else:
-                plan = generate_event_plan(event_type, int(guests), int(budget))
+                try:
+                    plan = generate_event_plan(event_type, int(guests), int(budget))
+                except ValueError as ve:
+                    return jsonify({
+                        "status": "error",
+                        "message": str(ve)
+                    }), 400
         except Exception as e:
             import traceback
             traceback.print_exc()

@@ -476,7 +476,7 @@ const ChatbotSection = () => {
 
     try {
       const result = await generateEventPlan({
-        event_type: eventType || "general",
+        event_type: eventType,
         guests: Number(guests) || 50,
         budget: Number(budget) || 10000,
         user_query: message,
@@ -529,7 +529,7 @@ const ChatbotSection = () => {
       setLoading(true);
       try {
         const result = await generateEventPlan({
-          event_type: eventType || "general",
+          event_type: eventType,
           guests: Number(guests) || 50,
           budget: Number(budget) || 10000,
           user_query: text,

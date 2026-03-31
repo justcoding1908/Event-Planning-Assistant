@@ -7,23 +7,45 @@ This file controls the chatbot flow by:
 - Calling the LLM service
 """
 
-from chatbot.prompts import BIRTHDAY_PROMPT, WEDDING_PROMPT, CORPORATE_PROMPT
+from chatbot.prompts import GENERIC_EVENT_PROMPT
 from chatbot.llm_service import get_llm_response
 
+def is_valid_event(event_type: str) -> bool:
+    prompt = f"""
+You are a strict validator.
 
-def select_prompt(event_type: str) -> str:
-    """
-    Selects the appropriate prompt template based on event type.
-    """
+Decide if the input is a REAL event type.
 
-    event_type = event_type.lower()
+Valid examples:
+- birthday party
+- wedding ceremony
+- business conference
+- music concert
+- college fest
 
-    if event_type == "birthday":
-        return BIRTHDAY_PROMPT
-    elif event_type == "wedding":
-        return WEDDING_PROMPT
-    else:
-        return CORPORATE_PROMPT
+Invalid examples:
+- asdasd
+- vnfkjkgj
+- 123123
+- random nonsense
+
+Rules:
+- Respond ONLY with "yes" or "no"
+- Be strict: if unsure → say "no"
+
+Input: {event_type}
+"""
+
+    response = get_llm_response(prompt).strip().lower()
+    return response == "yes"
+
+
+
+    
+
+
+
+
 
 
 def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
@@ -35,6 +57,8 @@ def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     # Validation
     if not event_type:
         return "Error: Event type is required."
+    if not is_valid_event(event_type):
+        raise ValueError(f"Invalid event type: '{event_type}'")
 
     if guests <= 0:
         return "Error: Number of guests must be greater than zero."
@@ -42,8 +66,8 @@ def generate_event_plan(event_type: str, guests: int, budget: int) -> str:
     if budget <= 0:
         return "Error: Budget must be greater than zero."
 
-    # Select prompt
-    prompt_template = select_prompt(event_type)
+    
+    prompt_template = GENERIC_EVENT_PROMPT
 
     formatted_prompt = prompt_template.format(
         event_type=event_type,
