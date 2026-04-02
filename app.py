@@ -3,6 +3,11 @@ from flask_cors import CORS
 from chatbot.chatbot import generate_event_plan
 from chatbot.llm_service import get_llm_response
 
+# NEW IMPORT — we're pulling in the bridge function we just created
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), "budget"))
+from budget_service import get_budget_summary
+
 app = Flask(__name__)
 CORS(app)
 
@@ -34,8 +39,6 @@ def generate_plan():
         if not event_type or guests is None or budget is None:
             return jsonify({"error": "Missing required fields"}), 400
 
-        # BUG FIX 1: Removed dead `response = {...}` block that was after a return.
-        # BUG FIX 2: Wrapped the result in a "data" key to match what test_integration.py expects.
         try:
             if user_query:
                 modified_prompt = f"""
@@ -62,9 +65,16 @@ def generate_plan():
             traceback.print_exc()
             return jsonify({"status": "error", "message": str(e)}), 500
 
+        # NEW — generate budget summary using the budget module
+        budget_summary = get_budget_summary(
+            total_budget=float(budget),
+            event_type=event_type
+        )
+
         return jsonify({
             "generated_plan": plan,
             "status": "success",
+            "budget_summary": budget_summary,   # <-- NEW key added to response
             "data": {
                 "event_type": event_type,
                 "guests": int(guests),

@@ -68,36 +68,171 @@ const renderMarkdown = (text: string) => {
   });
 };
 
-// ─── BudgetBreakdown ──────────────────────────────────────────────────────────
-const BudgetBreakdown = ({ budget }: { budget: number }) => {
-  const allocations = [
-    { label: "Venue", percent: 40, color: "bg-blue-500" },
-    { label: "Catering", percent: 20, color: "bg-purple-500" },
-    { label: "Decorations", percent: 20, color: "bg-pink-500" },
-    { label: "Contingency", percent: 20, color: "bg-gray-400" },
-  ];
+// ─── PieChart (with hover tooltips) ──────────────────────────────────────────
+const PieChart = ({ slices }: { slices: { label: string; value: number; color: string; amount: number }[] }) => {
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; percent: number; amount: number } | null>(null);
+  const total = slices.reduce((s, x) => s + x.value, 0);
+  let cumulative = 0;
+  const SIZE = 120;
+  const R = 50;
+  const cx = SIZE / 2, cy = SIZE / 2;
+
+  const toXY = (angle: number) => ({
+    x: cx + R * Math.cos((angle * Math.PI) / 180),
+    y: cy + R * Math.sin((angle * Math.PI) / 180),
+  });
 
   return (
-    <div className="space-y-3 py-4 border-t border-gray-200 mb-4">
-      <h4 className="text-sm font-semibold text-gray-900">Budget Breakdown</h4>
-      <div className="flex h-6 gap-1 rounded-lg overflow-hidden bg-gray-100">
-        {allocations.map((item) => (
-          <div
-            key={item.label}
-            className={`${item.color} flex-1`}
-            title={`${item.label}: ₹${(budget * item.percent) / 100}`}
-          />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        {allocations.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${item.color}`} />
-            <span className="text-gray-600">
-              {item.label}: ₹{(budget * item.percent) / 100}
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        className="w-36 h-36"
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {slices.map((slice, i) => {
+          const startAngle = cumulative * 3.6 - 90;
+          const slicePercent = (slice.value / total) * 100;
+          cumulative += slicePercent;
+          const endAngle = cumulative * 3.6 - 90;
+          const largeArc = slicePercent > 50 ? 1 : 0;
+          const start = toXY(startAngle);
+          const end = toXY(endAngle);
+          const d = `M ${cx} ${cy} L ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+
+          // midpoint angle for detecting hover center
+          const midAngle = ((startAngle + endAngle) / 2 * Math.PI) / 180;
+          const tooltipX = cx + (R * 0.65) * Math.cos(midAngle);
+          const tooltipY = cy + (R * 0.65) * Math.sin(midAngle);
+
+          return (
+            <path
+              key={i}
+              d={d}
+              fill={slice.color}
+              stroke="white"
+              strokeWidth="1.5"
+              className="cursor-pointer transition-opacity duration-150"
+              onMouseEnter={() =>
+                setTooltip({
+                  x: tooltipX,
+                  y: tooltipY,
+                  label: slice.label,
+                  percent: Math.round(slicePercent),
+                  amount: slice.amount,
+                })
+              }
+              style={{ opacity: tooltip && tooltip.label !== slice.label ? 0.6 : 1 }}
+            />
+          );
+        })}
+
+        {/* Donut hole */}
+        <circle cx={cx} cy={cy} r={R * 0.55} fill="white" />
+        <text x={cx} y={cy - 5} textAnchor="middle" fontSize="8" fill="#374151" fontWeight="bold">Budget</text>
+        <text x={cx} y={cy + 7} textAnchor="middle" fontSize="7" fill="#6b7280">Split</text>
+      </svg>
+
+      {/* Tooltip — rendered outside SVG as HTML for better styling */}
+      {tooltip && (
+        <div
+          className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl pointer-events-none"
+          style={{
+            // Position relative to the SVG container
+            left: `${(tooltip.x / 120) * 100}%`,
+            top: `${(tooltip.y / 120) * 100}%`,
+            transform: "translate(-50%, -130%)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <p className="font-semibold">{tooltip.label}</p>
+          <p className="text-gray-300">₹{tooltip.amount.toLocaleString("en-IN")}</p>
+          <p className="text-yellow-300">{tooltip.percent}% of budget</p>
+          {/* Arrow */}
+          <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45" />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── BudgetBreakdown ──────────────────────────────────────────────────────────
+const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6"];
+
+const BudgetBreakdown = ({
+  budget,
+  budgetSummary,
+}: {
+  budget: number;
+  budgetSummary: any;
+}) => {
+  // If we have real data from backend, use it. Otherwise fall back to hardcoded.
+  const allocations = budgetSummary?.allocated
+    ? Object.entries(budgetSummary.allocated).map(([key, val]: [string, any], i) => ({
+        label: key.charAt(0).toUpperCase() + key.slice(1),
+        percent: val.percent,
+        amount: val.amount,
+        color: COLORS[i % COLORS.length],
+      }))
+    : [
+        { label: "Venue",       percent: 30, amount: budget * 0.30, color: COLORS[0] },
+        { label: "Food",        percent: 40, amount: budget * 0.40, color: COLORS[1] },
+        { label: "Decoration",  percent: 20, amount: budget * 0.20, color: COLORS[2] },
+        { label: "Misc",        percent: 10, amount: budget * 0.10, color: COLORS[3] },
+      ];
+
+  const pieSlices = allocations.map((a) => ({
+    label: a.label,
+    value: a.percent,
+    color: a.color,
+    amount: a.amount,
+  }));
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 mb-4 bg-white">
+      <h4 className="text-sm font-semibold text-gray-900 mb-4">
+        💰 Budget Breakdown
+        {budgetSummary && (
+          <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+            budgetSummary.status === "healthy"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}>
+            {budgetSummary.status === "healthy" ? "✓ On Track" : "⚠ Over Budget"}
+          </span>
+        )}
+      </h4>
+
+      <div className="flex gap-4 items-center">
+        {/* Pie Chart */}
+        <div className="flex-shrink-0">
+          <PieChart slices={pieSlices} />
+        </div>
+
+        {/* Legend + amounts */}
+        <div className="flex-1 space-y-2">
+          {allocations.map((item) => (
+            <div key={item.label} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-xs text-gray-600">{item.label}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-semibold text-gray-800">
+                  ₹{item.amount.toLocaleString("en-IN")}
+                </span>
+                <span className="text-xs text-gray-400 ml-1">({item.percent}%)</span>
+              </div>
+            </div>
+          ))}
+
+          {/* Total line */}
+          <div className="border-t border-gray-100 pt-2 flex justify-between">
+            <span className="text-xs font-semibold text-gray-700">Total Budget</span>
+            <span className="text-xs font-bold text-indigo-600">
+              ₹{budget.toLocaleString("en-IN")}
             </span>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -155,10 +290,12 @@ const PlanSection = ({
 const PlanDisplay = ({
   plan,
   budget,
+  budgetSummary,
   downloadPDF,
 }: {
   plan: string;
   budget: number;
+  budgetSummary: any;
   downloadPDF: () => void;
 }) => {
   const safePlan = toRupees(plan || "");
@@ -202,7 +339,7 @@ const PlanDisplay = ({
         </Button>
       </div>
 
-      <BudgetBreakdown budget={budget} />
+      <BudgetBreakdown budget={budget} budgetSummary={budgetSummary} />
 
       <div className="space-y-4">
         {sections.map((section, i) => (
@@ -338,6 +475,7 @@ const ChatbotSection = () => {
   const [budget, setBudget] = useState(0);
   const [userQuery, setUserQuery] = useState("");
   const [currentPlan, setCurrentPlan] = useState("");
+  const [budgetSummary, setBudgetSummary] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showPlanInput, setShowPlanInput] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -403,6 +541,9 @@ const ChatbotSection = () => {
       ]);
       setCurrentPlan(plan);
       setShowPlanInput(true);
+      if (result?.budget_summary) {
+        setBudgetSummary(result.budget_summary);
+      }
     } catch (error) {
       console.error("Error generating plan:", error);
       setMessages((prev) => [
@@ -449,6 +590,9 @@ const ChatbotSection = () => {
         },
       ]);
       if (plan) setCurrentPlan(plan);
+      if (result?.budget_summary) {
+        setBudgetSummary(result.budget_summary);
+      }
       setUserQuery("");
     } catch (error) {
       console.error("Error updating plan:", error);
@@ -746,6 +890,7 @@ const downloadPDF = () => {
               <PlanDisplay
                 plan={currentPlan}
                 budget={budget}
+                budgetSummary={budgetSummary}
                 downloadPDF={downloadPDF}
               />
 
