@@ -226,6 +226,28 @@ const BudgetBreakdown = ({
             </div>
           ))}
 
+          {/* Stacked bar visualization */}
+          <div className="mt-4 mb-2">
+            <p className="text-xs text-gray-500 mb-2">Budget Distribution</p>
+            <div className="flex h-3 rounded-full overflow-hidden w-full">
+              {allocations.map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    width: `${item.percent}%`,
+                    backgroundColor: item.color,
+                  }}
+                  title={`${item.label}: ${item.percent}%`}
+                  className="transition-all duration-500 hover:opacity-75 cursor-default"
+                />
+              ))}
+            </div>
+            {/* Per-guest cost insight */}
+            <p className="text-xs text-gray-400 mt-2 text-right">
+              ≈ ₹{Math.round(budget / (budget > 0 ? (budget / 2500) : 1)).toLocaleString('en-IN')} estimated per guest
+            </p>
+          </div>
+
           {/* Total line */}
           <div className="border-t border-gray-100 pt-2 flex justify-between">
             <span className="text-xs font-semibold text-gray-700">Total Budget</span>
