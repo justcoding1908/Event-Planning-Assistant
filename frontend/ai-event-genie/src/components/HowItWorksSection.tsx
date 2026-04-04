@@ -41,20 +41,20 @@ const HowItWorksSection = () => {
           <div className="hidden md:block absolute top-20 left-1/6 right-1/6 h-0.5 bg-gradient-to-r from-primary via-accent to-primary opacity-30" />
 
           {steps.map((step, index) => (
-            <div key={step.step} className="relative">
-              <div className="feature-card text-center group">
-                {/* Step number */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full gradient-bg text-white text-sm font-bold">
-                  Step {step.step}
-                </div>
-
+            <div key={step.step} className="relative pt-8">
+              <div className="feature-card text-center group p-8">
                 {/* Icon */}
-                <div className="w-20 h-20 mx-auto mt-4 mb-6 rounded-2xl bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <div className="w-20 h-20 mx-auto mt-10 mb-8 rounded-2xl bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <step.icon className="w-10 h-10 text-primary" />
                 </div>
 
-                <h3 className="text-xl font-semibold font-display mb-3">{step.title}</h3>
+                <h3 className="text-xl font-semibold font-display mb-4">{step.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{step.description}</p>
+              </div>
+
+              {/* Step number - positioned outside card */}
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full gradient-bg text-white text-sm font-bold z-20">
+                Step {step.step}
               </div>
 
               {/* Arrow between steps */}
