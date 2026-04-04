@@ -11,10 +11,10 @@ const Index = () => {
     <main className="min-h-screen">
       <Navbar />
       <HeroSection />
-      <ChatbotSection />
-      <FeaturesSection />
-      <BudgetTrackerSection />
       <HowItWorksSection />
+      <FeaturesSection />
+      <ChatbotSection />
+      <BudgetTrackerSection />
       <Footer />
     </main>
   );
