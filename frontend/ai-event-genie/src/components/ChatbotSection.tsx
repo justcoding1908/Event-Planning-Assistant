@@ -350,56 +350,32 @@ const PlanDisplay = ({
   );
 };
 
-// ─── ChatPlanBubble — plan as formatted cards inside the chat window ──────────
+// ─── ChatPlanBubble — just a success indicator, not a repeat of the plan ──────
 const ChatPlanBubble = ({ content }: { content: string }) => {
-  const safePlan = toRupees(content || "");
-  const sections = parsePlan(safePlan);
+  // Extract first meaningful line as a teaser only
+  const firstLine = content.split("\n").find(l => l.trim()) || "";
+  const teaser = toRupees(firstLine).slice(0, 80) + (firstLine.length > 80 ? "..." : "");
 
   return (
     <div className="w-full mb-3">
-      <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-        {/* Header row */}
-        <div className="flex items-center gap-2 mb-3">
-          <Bot className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-          <span className="text-xs font-semibold text-indigo-600">
-            Event Plan Generated
-          </span>
-          <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full ml-auto">
-            ✓ Ready
+      <div className="bg-gradient-to-r from-teal-50 to-violet-50 border border-teal-200 rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          {/* Animated success checkmark */}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-md">
+            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">Event Plan Ready! 🎉</p>
+            <p className="text-xs text-gray-500 truncate mt-0.5">{teaser}</p>
+          </div>
+          <span className="text-xs bg-teal-100 text-teal-700 px-2 py-1 rounded-full font-medium flex-shrink-0">
+            ✓ Done
           </span>
         </div>
-
-        {/* Section cards */}
-        <div className="space-y-2">
-          {sections.map((section, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-md border border-indigo-100 p-3"
-            >
-              <div className="flex items-start gap-2">
-                <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 bg-indigo-500 text-white rounded-full text-xs font-bold">
-                  {i + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 mb-1">
-                    {section.title}
-                  </p>
-                  {/* Show first non-empty line of content */}
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    {toRupees(
-                      section.content
-                        .split("\n")
-                        .find((l) => l.trim()) || ""
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-xs text-indigo-400 mt-3 text-center">
-          Full plan with details shown below ↓
+        <p className="text-xs text-violet-500 mt-3 text-center font-medium">
+          ↓ Full plan with budget breakdown below
         </p>
       </div>
     </div>
