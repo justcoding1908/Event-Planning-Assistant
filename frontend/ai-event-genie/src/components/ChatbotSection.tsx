@@ -520,6 +520,10 @@ const ChatbotSection = () => {
       if (result?.budget_summary) {
         setBudgetSummary(result.budget_summary);
       }
+      // NEW — save to localStorage so Budget Tracker can read it
+      localStorage.setItem('eventai_budget', String(budget));
+      localStorage.setItem('eventai_event_type', eventType);
+      window.dispatchEvent(new Event('eventai_plan_saved'));
     } catch (error) {
       console.error("Error generating plan:", error);
       setMessages((prev) => [
