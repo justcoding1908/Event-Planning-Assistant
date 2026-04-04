@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Bot, Send, Sparkles, Download, Loader } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import confetti from 'canvas-confetti';
 
 import { generateEventPlan } from "@/services/api";
 
@@ -516,6 +517,12 @@ const ChatbotSection = () => {
         { role: "assistant", content: plan, isPlan: true },
       ]);
       setCurrentPlan(plan);
+      confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#7c3aed', '#a78bfa', '#f59e0b']
+        });
       setShowPlanInput(true);
       if (result?.budget_summary) {
         setBudgetSummary(result.budget_summary);
