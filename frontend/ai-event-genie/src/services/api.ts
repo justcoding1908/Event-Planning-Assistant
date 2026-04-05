@@ -5,7 +5,7 @@ export async function generateEventPlan(data: {
   user_query?: string;
 }) {
   try {
-    const response = await fetch("http://127.0.0.1:5000/generate-plan", {
+    const response = await fetch("https://event-planning-assistant-lpj3.onrender.com/generate-plan", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
