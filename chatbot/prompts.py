@@ -75,3 +75,27 @@ Provide the response using the following structure:
 
 Ensure the event plan is professional and cost-effective.
 """
+
+
+GENERIC_EVENT_PROMPT = """
+You are a professional event planner.
+
+Create a detailed event plan using the following details:
+
+Event Type: {event_type}
+Number of Guests: {guests}
+Total Budget: {budget} INR
+
+Provide the response using the following structure:
+
+1. Event Overview
+2. Venue Suggestions
+3. Catering Plan
+4. Decorations / Setup
+5. Activities / Entertainment
+6. Timeline
+7. Budget Breakdown
+8. Final Checklist
+
+Ensure the plan is practical and tailored to the event type.
+"""
